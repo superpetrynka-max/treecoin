@@ -1,216 +1,89 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <title>TreeCoin Game</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #eaf5e9;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-    }
-    h1 { color: #2c7a3f; }
-    .balance { margin: 15px; font-size: 20px; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 120px);
-      grid-gap: 10px;
-      margin: 20px 0;
-    }
-    .slot {
-      width: 120px; height: 120px;
-      background: #c9e6c9;
-      border: 2px solid #2c7a3f;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      font-size: 30px;
-      text-align: center;
-      padding: 5px;
-    }
-    .tree-label {
-      font-size: 12px;
-      margin-top: 5px;
-    }
-    .common { border-color: green; }
-    .rare { border-color: blue; }
-    .epic { border-color: purple; }
-    .legendary { border-color: gold; }
-
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #2c7a3f; color: white;
-      border: none; border-radius: 5px;
-      cursor: pointer; margin: 5px;
-    }
-    button:disabled {
-      background: gray; cursor: not-allowed;
-    }
-    .timers {
-      margin: 10px; font-size: 14px; color: #333;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Дерева + Скриньки + TRC</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 0; }
+  .tree { margin: 20px; display: inline-block; background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  .tree h3 { margin: 0 0 10px; }
+  .timer-trc { 
+    font-size: 20px; 
+    margin: 10px; 
+    padding: 10px 20px; 
+    border-radius: 10px; 
+    background: #333; 
+    color: #fff; 
+    position: fixed; 
+    bottom: 0; 
+    left: 50%; 
+    transform: translateX(-50%);
+  }
+</style>
 </head>
 <body>
-  <h1>🌳 TreeCoin (TRS) 🌳</h1>
-  <div class="balance">Баланс: <span id="balance">0</span> TRS</div>
 
-  <div class="grid" id="grid"></div>
+<!-- Дерева -->
+<div class="tree" id="tree1">
+    <h3>Звичайне дерево</h3>
+    <p>TRC накопичено: <span class="trc-count">0.000</span></p>
+</div>
 
-  <button id="collectBtn" onclick="collectTRS()">💰 Зібрати TRS</button>
-  <div class="timers">Наступний збір: <span id="collectTimer">00:00:00</span></div>
+<div class="tree" id="tree2">
+    <h3>Особливе дерево</h3>
+    <p>TRC накопичено: <span class="trc-count">0.000</span></p>
+</div>
 
-  <button id="boxBtn" onclick="openBox()">🎁 Отримати скриньку</button>
-  <div class="timers">Наступна скринька: <span id="boxTimer">00:00:00</span></div>
+<!-- Таймер і загальний TRC -->
+<div id="timer" class="timer-trc">Завантаження таймера...</div>
+<div id="trc" class="timer-trc">TRC: 0.000</div>
 
-  <script>
-    // === Налаштування ===
-    const GRID_SIZE = 9;
-    const TREE_TYPES = [
-      { name: "Звичайне дерево", icon: "🌱", chance: 60, income: 1, class: "common" },
-      { name: "Рідкісне дерево", icon: "🌲", chance: 25, income: 3, class: "rare" },
-      { name: "Епічне дерево", icon: "🌸", chance: 10, income: 7, class: "epic" },
-      { name: "Легендарне дерево", icon: "🌟", chance: 5, income: 15, class: "legendary" }
-    ];
+<script>
+// Дані дерев
+const trees = [
+    { element: document.querySelector('#tree1 .trc-count'), trc: 0, rate: 1 }, // 1 TRC/год
+    { element: document.querySelector('#tree2 .trc-count'), trc: 0, rate: 2 }  // 2 TRC/год
+];
 
-    const COLLECT_COOLDOWN = 60 * 60 * 1000; // 1 година
-    const BOX_COOLDOWN = 24 * 60 * 60 * 1000; // 24 години
+// Таймер до безкоштовної скриньки о 12:00
+function updateTimer() {
+    const now = new Date();
+    let nextNoon = new Date();
+    nextNoon.setHours(12, 0, 0, 0);
+    if (now >= nextNoon) nextNoon.setDate(nextNoon.getDate() + 1);
 
-    // Дані збереження
-    let balance = parseFloat(localStorage.getItem("balance")) || 0;
-    let trees = JSON.parse(localStorage.getItem("trees")) || Array(GRID_SIZE).fill(null);
-    let lastCollect = parseInt(localStorage.getItem("lastCollect")) || 0;
-    let lastBox = parseInt(localStorage.getItem("lastBox")) || 0;
+    const diff = nextNoon - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    const grid = document.getElementById("grid");
-    const balanceEl = document.getElementById("balance");
-    const collectBtn = document.getElementById("collectBtn");
-    const boxBtn = document.getElementById("boxBtn");
-    const collectTimer = document.getElementById("collectTimer");
-    const boxTimer = document.getElementById("boxTimer");
+    document.getElementById('timer').textContent =
+        `До безкоштовної скриньки залишилось: ${hours}г ${minutes}хв ${seconds}с`;
+}
 
-    // Рендер сітки
-    function renderGrid() {
-      grid.innerHTML = "";
-      trees.forEach(tree => {
-        const slot = document.createElement("div");
-        slot.classList.add("slot");
+// TRC відлік щосекунди
+function updateTRC() {
+    trees.forEach(tree => {
+        tree.trc += tree.rate / 3600; // щосекунди
+        tree.element.textContent = tree.trc.toFixed(3);
+    });
+}
 
-        if (tree) {
-          const treeType = TREE_TYPES[tree.type];
-          slot.classList.add(treeType.class);
-          slot.innerHTML = treeType.icon;
-          const label = document.createElement("div");
-          label.classList.add("tree-label");
-          label.textContent = `${treeType.name} (+${treeType.income}/год)`;
-          slot.appendChild(label);
-        } else {
-          slot.innerHTML = "➕";
-        }
-        grid.appendChild(slot);
-      });
-      balanceEl.textContent = balance.toFixed(2);
-    }
+// Загальний TRC (сума всіх дерев)
+function updateTotalTRC() {
+    const total = trees.reduce((sum, tree) => sum + tree.trc, 0);
+    document.getElementById('trc').textContent = `TRC: ${total.toFixed(3)}`;
+}
 
-    // Випадкове дерево
-    function getRandomTree() {
-      let roll = Math.random() * 100;
-      let sum = 0;
-      for (let i = 0; i < TREE_TYPES.length; i++) {
-        sum += TREE_TYPES[i].chance;
-        if (roll <= sum) return i;
-      }
-      return 0;
-    }
+// Запуск оновлення кожну секунду
+setInterval(() => { updateTimer(); updateTRC(); updateTotalTRC(); }, 1000);
 
-    // Відкрити скриньку
-    function openBox() {
-      let now = Date.now();
-      if (now - lastBox < BOX_COOLDOWN) {
-        alert("Скринька ще недоступна!");
-        return;
-      }
-      let emptyIndex = trees.findIndex(t => t === null);
-      if (emptyIndex === -1) {
-        alert("Немає вільних слотів для дерева!");
-        return;
-      }
-      let type = getRandomTree();
-      trees[emptyIndex] = { type: type, planted: now };
-      lastBox = now;
-      saveGame();
-      renderGrid();
-      alert("Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
-    }
+// Початкове оновлення
+updateTimer();
+updateTRC();
+updateTotalTRC();
+</script>
 
-    // Збір TRS
-    function collectTRS() {
-      let now = Date.now();
-      if (now - lastCollect < COLLECT_COOLDOWN) {
-        alert("Ще зарано збирати!");
-        return;
-      }
-      let trsEarned = 0;
-      trees.forEach(tree => {
-        if (tree) trsEarned += TREE_TYPES[tree.type].income;
-      });
-      balance += trsEarned;
-      lastCollect = now;
-      saveGame();
-      renderGrid();
-      alert("Зібрано +" + trsEarned + " TRS!");
-    }
-
-    // Оновлення таймерів
-    function updateTimers() {
-      let now = Date.now();
-
-      // Таймер збору
-      let collectLeft = COLLECT_COOLDOWN - (now - lastCollect);
-      if (collectLeft <= 0) {
-        collectBtn.disabled = false;
-        collectTimer.textContent = "Доступно!";
-      } else {
-        collectBtn.disabled = true;
-        collectTimer.textContent = formatTime(collectLeft);
-      }
-
-      // Таймер скриньки
-      let boxLeft = BOX_COOLDOWN - (now - lastBox);
-      if (boxLeft <= 0) {
-        boxBtn.disabled = false;
-        boxTimer.textContent = "Доступна!";
-      } else {
-        boxBtn.disabled = true;
-        boxTimer.textContent = formatTime(boxLeft);
-      }
-    }
-
-    // Форматування часу
-    function formatTime(ms) {
-      let totalSec = Math.floor(ms / 1000);
-      let h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-      let m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-      let s = String(totalSec % 60).padStart(2, '0');
-      return `${h}:${m}:${s}`;
-    }
-
-    // Збереження
-    function saveGame() {
-      localStorage.setItem("balance", balance);
-      localStorage.setItem("trees", JSON.stringify(trees));
-      localStorage.setItem("lastCollect", lastCollect);
-      localStorage.setItem("lastBox", lastBox);
-    }
-
-    renderGrid();
-    setInterval(updateTimers, 1000);
-  </script>
 </body>
 </html>
+
