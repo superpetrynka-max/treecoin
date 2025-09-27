@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>TreeCoin 🌳</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(to bottom, #b2dfdb, #e0f2f1); margin: 0; text-align: center; }
+    h1 { margin: 20px; color: #1b5e20; }
+    #balance-box { background: #fff; display: inline-block; padding: 10px 20px; margin: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    button { margin: 10px; padding: 10px 20px; border: none; border-radius: 8px; background: #388e3c; color: white; font-size: 16px; cursor: pointer; }
+    button:hover { background: #66bb6a; }
+    .garden { display: grid; grid-template-columns: repeat(3, 100px); gap: 10px; justify-content: center; margin: 20px; }
+    .slot { width: 100px; height: 100px; border: 2px dashed #777; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #fff; font-size: 32px; }
+  </style>
+</head>
+<body>
+  <h1>TreeCoin 🌳</h1>
+  <div id="balance-box">Баланс: <span id="balance">100</span> TRC</div><br>
+  <button onclick="plantTree()">🌱 Посадити дерево (10 TRC)</button>
+  <button onclick="collect()">💰 Зібрати прибуток</button>
+  <button onclick="openBox()">🎁 Відкрити скриньку</button>
+
+  <div class="garden" id="garden"></div>
+
+<script>
+let balance = 100;
+let trees = [];
+let lastCollected = Date.now();
+
+function updateBalance() {
+  document.getElementById("balance").innerText = balance;
+}
+
+function plantTree() {
+  if (balance >= 10) {
+    balance -= 10;
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.innerText = "🌳";
+    document.getElementById("garden").appendChild(slot);
+    trees.push({ planted: Date.now() });
+    updateBalance();
+  } else {
+    alert("Недостатньо TRC!");
+  }
+}
+
+function collect() {
+  let now = Date.now();
+  let earned = 0;
+  trees.forEach(t => {
+    earned += Math.floor((now - lastCollected) / 5000); // 1 TRC кожні 5с з кожного дерева
+  });
+  lastCollected = now;
+  balance += earned;
+  updateBalance();
+  alert("Зібрано: +" + earned + " TRC!");
+}
+
+function openBox() {
+  let reward = Math.floor(Math.random() * 20) + 5;
+  balance += reward;
+  updateBalance();
+  alert("Скринька принесла +" + reward + " TRC!");
+}
+
+updateBalance();
+</script>
+</body>
+</html>
