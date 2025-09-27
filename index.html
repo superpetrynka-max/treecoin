@@ -1,118 +1,199 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<title>Дерева + Магазин</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; text-align: center; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; max-width: 600px; margin: 20px auto; }
-  .tree { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-size: 18px; }
-  .tree span { font-size: 28px; }
-  .timer-trc, .shop { 
-    font-size: 20px; 
-    margin: 10px auto; 
-    padding: 10px 20px; 
-    border-radius: 10px; 
-    background: #333; 
-    color: #fff; 
-    max-width: 400px;
-  }
-  .shop button { padding: 10px 15px; border-radius: 5px; border: none; background: #ffcc00; font-weight: bold; cursor: pointer; }
-  .shop button:hover { background: #e6b800; }
-  @media (max-width: 600px) { .tree { font-size: 16px; } .tree span { font-size: 24px; } }
-</style>
+  <meta charset="UTF-8">
+  <title>TreeCoin Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eaf5e9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 { color: #2c7a3f; }
+    .balance { margin: 15px; font-size: 20px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      grid-gap: 10px;
+      margin: 20px 0;
+    }
+    .slot {
+      width: 120px; height: 120px;
+      background: #c9e6c9;
+      border: 2px solid #2c7a3f;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 30px;
+      text-align: center;
+      padding: 5px;
+    }
+    .tree-label {
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .common { border-color: green; }
+    .rare { border-color: blue; }
+    .epic { border-color: purple; }
+    .legendary { border-color: gold; }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #2c7a3f; color: white;
+      border: none; border-radius: 5px;
+      cursor: pointer; margin: 5px;
+    }
+    button:disabled {
+      background: gray; cursor: not-allowed;
+    }
+    .timers {
+      margin: 10px; font-size: 14px; color: #333;
+    }
+  </style>
 </head>
 <body>
+  <h1>🌳 TreeCoin (TRS) 🌳</h1>
+  <div class="balance">Баланс: <span id="balance">0.000</span> TRS</div>
 
-<h1>Мої дерева</h1>
-<div class="grid" id="treeGrid"></div>
+  <div class="grid" id="grid"></div>
 
-<div id="timer" class="timer-trc">Завантаження таймера...</div>
-<div id="trc" class="timer-trc">TRC: 0.000</div>
+  <button id="boxBtn" onclick="openBox()">🎁 Отримати скриньку</button>
+  <div class="timers">Наступна скринька: <span id="boxTimer">00:00:00</span></div>
 
-<div class="shop">
-  <h2>Магазин</h2>
-  <button id="freeChest">🎁 Безкоштовна скринька (раз на день)</button>
-</div>
+  <script>
+    // === Налаштування ===
+    const GRID_SIZE = 9;
+    const TREE_TYPES = [
+      { name: "Звичайне дерево", icon: "🌱", chance: 60, income: 1, class: "common" },
+      { name: "Рідкісне дерево", icon: "🌲", chance: 25, income: 3, class: "rare" },
+      { name: "Епічне дерево", icon: "🌸", chance: 10, income: 7, class: "epic" },
+      { name: "Легендарне дерево", icon: "🌟", chance: 5, income: 15, class: "legendary" }
+    ];
 
-<script>
-// Дані дерев з попереднього чату: назва + рідкість + емоджі + TRC/год
-const treeTypes = [
-    { name: 'Дуб', rarity: 'Звичайне', emoji: '🌳', rate: 1 },
-    { name: 'Ялина', rarity: 'Рідкісне', emoji: '🎄', rate: 2 },
-    { name: 'Сакура', rarity: 'Епічне', emoji: '🌸', rate: 5 },
-    { name: 'Баобаб', rarity: 'Легендарне', emoji: '🌴', rate: 10 }
-];
+    const BOX_COOLDOWN = 24 * 60 * 60 * 1000; // 24 години
 
-// Генеруємо 9 дерев у сітці 3x3 випадково
-const trees = [];
-const grid = document.getElementById('treeGrid');
+    // Дані збереження
+    let balance = parseFloat(localStorage.getItem("balance")) || 0;
+    let trees = JSON.parse(localStorage.getItem("trees")) || Array(GRID_SIZE).fill(null);
+    let lastUpdate = parseInt(localStorage.getItem("lastUpdate")) || Date.now();
+    let lastBox = parseInt(localStorage.getItem("lastBox")) || 0;
 
-for (let i = 0; i < 9; i++) {
-    const type = treeTypes[Math.floor(Math.random() * treeTypes.length)];
-    const treeDiv = document.createElement('div');
-    treeDiv.className = 'tree';
-    treeDiv.innerHTML = `<span>${type.emoji}</span><br>${type.rarity} ${type.name}<br>TRC: <span class="trc-count">0.000</span>`;
-    grid.appendChild(treeDiv);
-    trees.push({ element: treeDiv.querySelector('.trc-count'), trc: 0, rate: type.rate });
-}
+    const grid = document.getElementById("grid");
+    const balanceEl = document.getElementById("balance");
+    const boxBtn = document.getElementById("boxBtn");
+    const boxTimer = document.getElementById("boxTimer");
 
-// Таймер до безкоштовної скриньки о 12:00
-function updateTimer() {
-    const now = new Date();
-    let nextNoon = new Date();
-    nextNoon.setHours(12, 0, 0, 0);
-    if (now >= nextNoon) nextNoon.setDate(nextNoon.getDate() + 1);
+    // Рендер сітки
+    function renderGrid() {
+      grid.innerHTML = "";
+      trees.forEach(tree => {
+        const slot = document.createElement("div");
+        slot.classList.add("slot");
 
-    const diff = nextNoon - now;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    document.getElementById('timer').textContent =
-        `До безкоштовної скриньки залишилось: ${hours}г ${minutes}хв ${seconds}с`;
-}
-
-// Автоматичне накопичення TRC щосекунди
-function updateTRC() {
-    trees.forEach(tree => {
-        tree.trc += tree.rate / 3600;
-        tree.element.textContent = tree.trc.toFixed(3);
-    });
-}
-
-// Загальний TRC
-function updateTotalTRC() {
-    const total = trees.reduce((sum, tree) => sum + tree.trc, 0);
-    document.getElementById('trc').textContent = `TRC: ${total.toFixed(3)}`;
-}
-
-// Оновлення кожну секунду
-setInterval(() => { updateTimer(); updateTRC(); updateTotalTRC(); }, 1000);
-updateTimer();
-updateTRC();
-updateTotalTRC();
-
-// Безкоштовна скринька (раз на день)
-const freeChestBtn = document.getElementById('freeChest');
-let lastClaimDate = null;
-
-freeChestBtn.addEventListener('click', () => {
-    const today = new Date().toDateString();
-    if (lastClaimDate === today) {
-        alert('Скриньку можна отримати лише раз на день!');
-        return;
+        if (tree) {
+          const treeType = TREE_TYPES[tree.type];
+          slot.classList.add(treeType.class);
+          slot.innerHTML = treeType.icon;
+          const label = document.createElement("div");
+          label.classList.add("tree-label");
+          label.textContent = `${treeType.name} (+${treeType.income}/год)`;
+          slot.appendChild(label);
+        } else {
+          slot.innerHTML = "➕";
+        }
+        grid.appendChild(slot);
+      });
+      balanceEl.textContent = balance.toFixed(3);
     }
-    lastClaimDate = today;
 
-    // Видаємо випадкову кількість TRC за скриньку
-    const reward = Math.floor(Math.random() * 20) + 5; // 5-24 TRC
-    trees.forEach(tree => tree.trc += reward / trees.length);
-    updateTotalTRC();
-    alert(`Ви отримали скриньку! TRC +${reward}`);
-});
-</script>
+    // Випадкове дерево
+    function getRandomTree() {
+      let roll = Math.random() * 100;
+      let sum = 0;
+      for (let i = 0; i < TREE_TYPES.length; i++) {
+        sum += TREE_TYPES[i].chance;
+        if (roll <= sum) return i;
+      }
+      return 0;
+    }
 
+    // Відкрити скриньку
+    function openBox() {
+      let now = Date.now();
+      if (now - lastBox < BOX_COOLDOWN) {
+        alert("Скринька ще недоступна!");
+        return;
+      }
+      let emptyIndex = trees.findIndex(t => t === null);
+      if (emptyIndex === -1) {
+        alert("Немає вільних слотів для дерева!");
+        return;
+      }
+      let type = getRandomTree();
+      trees[emptyIndex] = { type: type, planted: now };
+      lastBox = now;
+      saveGame();
+      renderGrid();
+      alert("Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
+    }
+
+    // Реальний час — нарахування TRS
+    function updateBalance() {
+      let now = Date.now();
+      let elapsed = (now - lastUpdate) / 1000; // секунди з останнього оновлення
+      lastUpdate = now;
+
+      let incomePerSec = 0;
+      trees.forEach(tree => {
+        if (tree) {
+          let incomePerHour = TREE_TYPES[tree.type].income;
+          incomePerSec += incomePerHour / 3600;
+        }
+      });
+
+      balance += incomePerSec * elapsed;
+      saveGame();
+      renderGrid();
+    }
+
+    // Таймер скриньки
+    function updateBoxTimer() {
+      let now = Date.now();
+      let boxLeft = BOX_COOLDOWN - (now - lastBox);
+      if (boxLeft <= 0) {
+        boxBtn.disabled = false;
+        boxTimer.textContent = "Доступна!";
+      } else {
+        boxBtn.disabled = true;
+        boxTimer.textContent = formatTime(boxLeft);
+      }
+    }
+
+    function formatTime(ms) {
+      let totalSec = Math.floor(ms / 1000);
+      let h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      let m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      let s = String(totalSec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function saveGame() {
+      localStorage.setItem("balance", balance);
+      localStorage.setItem("trees", JSON.stringify(trees));
+      localStorage.setItem("lastUpdate", lastUpdate);
+      localStorage.setItem("lastBox", lastBox);
+    }
+
+    // Оновлення гри
+    renderGrid();
+    setInterval(updateBalance, 1000); // щосекунди додаємо TRS
+    setInterval(updateBoxTimer, 1000);
+  </script>
 </body>
 </html>
