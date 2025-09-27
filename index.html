@@ -16,16 +16,26 @@
     .balance { margin: 15px; font-size: 20px; }
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, 100px);
+      grid-template-columns: repeat(3, 120px);
       grid-gap: 10px;
       margin: 20px 0;
     }
     .slot {
-      width: 100px; height: 100px;
+      width: 120px; height: 120px;
       background: #c9e6c9;
       border: 2px solid #2c7a3f;
-      display: flex; justify-content: center; align-items: center;
-      font-size: 30px; cursor: pointer;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 30px;
+    }
+    .tree-name {
+      font-size: 12px;
+      margin-top: 5px;
+      text-align: center;
+      color: #1b5e20;
     }
     button {
       padding: 10px 20px;
@@ -37,6 +47,9 @@
     button:disabled {
       background: gray; cursor: not-allowed;
     }
+    .timers {
+      margin: 10px; font-size: 14px; color: #333;
+    }
   </style>
 </head>
 <body>
@@ -45,28 +58,37 @@
 
   <div class="grid" id="grid"></div>
 
-  <button onclick="collectTRS()">💰 Зібрати TRS</button>
-  <button id="boxBtn" onclick="openBox()">🎁 Отримати щоденну скриньку</button>
+  <button id="collectBtn" onclick="collectTRS()">💰 Зібрати TRS</button>
+  <div class="timers">Наступний збір: <span id="collectTimer">00:00:00</span></div>
+
+  <button id="boxBtn" onclick="openBox()">🎁 Отримати скриньку</button>
+  <div class="timers">Наступна скринька: <span id="boxTimer">00:00:00</span></div>
 
   <script>
     // === Налаштування ===
     const GRID_SIZE = 9;
     const TREE_TYPES = [
-      { name: "звичайне", icon: "🌱", chance: 60, income: 1 },
-      { name: "рідкісне", icon: "🌲", chance: 25, income: 3 },
-      { name: "епічне", icon: "🌸", chance: 10, income: 7 },
-      { name: "легендарне", icon: "🌟", chance: 5, income: 15 }
+      { name: "Звичайне", icon: "🌱", chance: 60, income: 1 },
+      { name: "Рідкісне", icon: "🌲", chance: 25, income: 3 },
+      { name: "Епічне", icon: "🌸", chance: 10, income: 7 },
+      { name: "Легендарне", icon: "🌟", chance: 5, income: 15 }
     ];
 
-    // Збережені дані
+    const COLLECT_COOLDOWN = 60 * 60 * 1000; // 1 година
+    const BOX_COOLDOWN = 24 * 60 * 60 * 1000; // 24 години
+
+    // Дані збереження
     let balance = parseFloat(localStorage.getItem("balance")) || 0;
     let trees = JSON.parse(localStorage.getItem("trees")) || Array(GRID_SIZE).fill(null);
-    let lastCollect = parseInt(localStorage.getItem("lastCollect")) || Date.now();
+    let lastCollect = parseInt(localStorage.getItem("lastCollect")) || 0;
     let lastBox = parseInt(localStorage.getItem("lastBox")) || 0;
 
     const grid = document.getElementById("grid");
     const balanceEl = document.getElementById("balance");
+    const collectBtn = document.getElementById("collectBtn");
     const boxBtn = document.getElementById("boxBtn");
+    const collectTimer = document.getElementById("collectTimer");
+    const boxTimer = document.getElementById("boxTimer");
 
     // Рендер сітки
     function renderGrid() {
@@ -76,13 +98,16 @@
         slot.classList.add("slot");
         if (tree) {
           slot.innerHTML = TREE_TYPES[tree.type].icon;
+          const label = document.createElement("div");
+          label.classList.add("tree-name");
+          label.textContent = TREE_TYPES[tree.type].name;
+          slot.appendChild(label);
         } else {
           slot.innerHTML = "➕";
         }
         grid.appendChild(slot);
       });
       balanceEl.textContent = balance.toFixed(2);
-      checkBoxButton();
     }
 
     // Випадкове дерево
@@ -96,11 +121,11 @@
       return 0;
     }
 
-    // Відкрити щоденну скриньку
+    // Відкрити скриньку
     function openBox() {
       let now = Date.now();
-      if (now - lastBox < 24 * 60 * 60 * 1000) {
-        alert("Скринька доступна лише раз на добу!");
+      if (now - lastBox < BOX_COOLDOWN) {
+        alert("Скринька ще недоступна!");
         return;
       }
       let emptyIndex = trees.findIndex(t => t === null);
@@ -118,31 +143,54 @@
 
     // Збір TRS
     function collectTRS() {
-      const now = Date.now();
-      const hoursPassed = (now - lastCollect) / (1000 * 60 * 60);
-      if (hoursPassed >= 1) {
-        let trsEarned = 0;
-        trees.forEach(tree => {
-          if (tree) trsEarned += TREE_TYPES[tree.type].income * Math.floor(hoursPassed);
-        });
-        balance += trsEarned;
-        lastCollect = now;
-        saveGame();
-        renderGrid();
-        alert("Зібрано +" + trsEarned + " TRS!");
+      let now = Date.now();
+      if (now - lastCollect < COLLECT_COOLDOWN) {
+        alert("Ще зарано збирати!");
+        return;
+      }
+      let trsEarned = 0;
+      trees.forEach(tree => {
+        if (tree) trsEarned += TREE_TYPES[tree.type].income;
+      });
+      balance += trsEarned;
+      lastCollect = now;
+      saveGame();
+      renderGrid();
+      alert("Зібрано +" + trsEarned + " TRS!");
+    }
+
+    // Оновлення таймерів
+    function updateTimers() {
+      let now = Date.now();
+
+      // Таймер збору
+      let collectLeft = COLLECT_COOLDOWN - (now - lastCollect);
+      if (collectLeft <= 0) {
+        collectBtn.disabled = false;
+        collectTimer.textContent = "Доступно!";
       } else {
-        alert("Занадто рано, спробуйте пізніше!");
+        collectBtn.disabled = true;
+        collectTimer.textContent = formatTime(collectLeft);
+      }
+
+      // Таймер скриньки
+      let boxLeft = BOX_COOLDOWN - (now - lastBox);
+      if (boxLeft <= 0) {
+        boxBtn.disabled = false;
+        boxTimer.textContent = "Доступна!";
+      } else {
+        boxBtn.disabled = true;
+        boxTimer.textContent = formatTime(boxLeft);
       }
     }
 
-    // Кнопка скриньки
-    function checkBoxButton() {
-      let now = Date.now();
-      if (now - lastBox >= 24 * 60 * 60 * 1000) {
-        boxBtn.disabled = false;
-      } else {
-        boxBtn.disabled = true;
-      }
+    // Форматування часу
+    function formatTime(ms) {
+      let totalSec = Math.floor(ms / 1000);
+      let h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      let m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      let s = String(totalSec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
     }
 
     // Збереження
@@ -154,6 +202,7 @@
     }
 
     renderGrid();
+    setInterval(updateTimers, 1000);
   </script>
 </body>
 </html>
