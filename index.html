@@ -2,48 +2,61 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<title>Дерева + Скриньки + TRC</title>
+<title>Дерева + Магазин</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body { font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 0; }
-  .tree { margin: 20px; display: inline-block; background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-  .tree h3 { margin: 0 0 10px; }
-  .timer-trc { 
+  body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; max-width: 600px; margin: 20px auto; }
+  .tree { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-size: 18px; }
+  .tree span { font-size: 28px; }
+  .timer-trc, .shop { 
     font-size: 20px; 
-    margin: 10px; 
+    margin: 10px auto; 
     padding: 10px 20px; 
     border-radius: 10px; 
     background: #333; 
     color: #fff; 
-    position: fixed; 
-    bottom: 0; 
-    left: 50%; 
-    transform: translateX(-50%);
+    max-width: 400px;
   }
+  .shop button { padding: 10px 15px; border-radius: 5px; border: none; background: #ffcc00; font-weight: bold; cursor: pointer; }
+  .shop button:hover { background: #e6b800; }
+  @media (max-width: 600px) { .tree { font-size: 16px; } .tree span { font-size: 24px; } }
 </style>
 </head>
 <body>
 
-<!-- Дерева -->
-<div class="tree" id="tree1">
-    <h3>Звичайне дерево</h3>
-    <p>TRC накопичено: <span class="trc-count">0.000</span></p>
-</div>
+<h1>Мої дерева</h1>
+<div class="grid" id="treeGrid"></div>
 
-<div class="tree" id="tree2">
-    <h3>Особливе дерево</h3>
-    <p>TRC накопичено: <span class="trc-count">0.000</span></p>
-</div>
-
-<!-- Таймер і загальний TRC -->
 <div id="timer" class="timer-trc">Завантаження таймера...</div>
 <div id="trc" class="timer-trc">TRC: 0.000</div>
 
+<div class="shop">
+  <h2>Магазин</h2>
+  <button id="freeChest">🎁 Безкоштовна скринька (раз на день)</button>
+</div>
+
 <script>
-// Дані дерев
-const trees = [
-    { element: document.querySelector('#tree1 .trc-count'), trc: 0, rate: 1 }, // 1 TRC/год
-    { element: document.querySelector('#tree2 .trc-count'), trc: 0, rate: 2 }  // 2 TRC/год
+// Дані дерев з попереднього чату: назва + рідкість + емоджі + TRC/год
+const treeTypes = [
+    { name: 'Дуб', rarity: 'Звичайне', emoji: '🌳', rate: 1 },
+    { name: 'Ялина', rarity: 'Рідкісне', emoji: '🎄', rate: 2 },
+    { name: 'Сакура', rarity: 'Епічне', emoji: '🌸', rate: 5 },
+    { name: 'Баобаб', rarity: 'Легендарне', emoji: '🌴', rate: 10 }
 ];
+
+// Генеруємо 9 дерев у сітці 3x3 випадково
+const trees = [];
+const grid = document.getElementById('treeGrid');
+
+for (let i = 0; i < 9; i++) {
+    const type = treeTypes[Math.floor(Math.random() * treeTypes.length)];
+    const treeDiv = document.createElement('div');
+    treeDiv.className = 'tree';
+    treeDiv.innerHTML = `<span>${type.emoji}</span><br>${type.rarity} ${type.name}<br>TRC: <span class="trc-count">0.000</span>`;
+    grid.appendChild(treeDiv);
+    trees.push({ element: treeDiv.querySelector('.trc-count'), trc: 0, rate: type.rate });
+}
 
 // Таймер до безкоштовної скриньки о 12:00
 function updateTimer() {
@@ -61,29 +74,45 @@ function updateTimer() {
         `До безкоштовної скриньки залишилось: ${hours}г ${minutes}хв ${seconds}с`;
 }
 
-// TRC відлік щосекунди
+// Автоматичне накопичення TRC щосекунди
 function updateTRC() {
     trees.forEach(tree => {
-        tree.trc += tree.rate / 3600; // щосекунди
+        tree.trc += tree.rate / 3600;
         tree.element.textContent = tree.trc.toFixed(3);
     });
 }
 
-// Загальний TRC (сума всіх дерев)
+// Загальний TRC
 function updateTotalTRC() {
     const total = trees.reduce((sum, tree) => sum + tree.trc, 0);
     document.getElementById('trc').textContent = `TRC: ${total.toFixed(3)}`;
 }
 
-// Запуск оновлення кожну секунду
+// Оновлення кожну секунду
 setInterval(() => { updateTimer(); updateTRC(); updateTotalTRC(); }, 1000);
-
-// Початкове оновлення
 updateTimer();
 updateTRC();
 updateTotalTRC();
+
+// Безкоштовна скринька (раз на день)
+const freeChestBtn = document.getElementById('freeChest');
+let lastClaimDate = null;
+
+freeChestBtn.addEventListener('click', () => {
+    const today = new Date().toDateString();
+    if (lastClaimDate === today) {
+        alert('Скриньку можна отримати лише раз на день!');
+        return;
+    }
+    lastClaimDate = today;
+
+    // Видаємо випадкову кількість TRC за скриньку
+    const reward = Math.floor(Math.random() * 20) + 5; // 5-24 TRC
+    trees.forEach(tree => tree.trc += reward / trees.length);
+    updateTotalTRC();
+    alert(`Ви отримали скриньку! TRC +${reward}`);
+});
 </script>
 
 </body>
 </html>
-
