@@ -2,69 +2,159 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <title>TreeCoin 🌳</title>
+  <title>TreeCoin Game</title>
   <style>
-    body { font-family: Arial, sans-serif; background: linear-gradient(to bottom, #b2dfdb, #e0f2f1); margin: 0; text-align: center; }
-    h1 { margin: 20px; color: #1b5e20; }
-    #balance-box { background: #fff; display: inline-block; padding: 10px 20px; margin: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-    button { margin: 10px; padding: 10px 20px; border: none; border-radius: 8px; background: #388e3c; color: white; font-size: 16px; cursor: pointer; }
-    button:hover { background: #66bb6a; }
-    .garden { display: grid; grid-template-columns: repeat(3, 100px); gap: 10px; justify-content: center; margin: 20px; }
-    .slot { width: 100px; height: 100px; border: 2px dashed #777; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #fff; font-size: 32px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #eaf5e9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 { color: #2c7a3f; }
+    .balance { margin: 15px; font-size: 20px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 10px;
+      margin: 20px 0;
+    }
+    .slot {
+      width: 100px; height: 100px;
+      background: #c9e6c9;
+      border: 2px solid #2c7a3f;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 30px; cursor: pointer;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #2c7a3f; color: white;
+      border: none; border-radius: 5px;
+      cursor: pointer; margin: 5px;
+    }
+    button:disabled {
+      background: gray; cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
-  <h1>TreeCoin 🌳</h1>
-  <div id="balance-box">Баланс: <span id="balance">100</span> TRC</div><br>
-  <button onclick="plantTree()">🌱 Посадити дерево (10 TRC)</button>
-  <button onclick="collect()">💰 Зібрати прибуток</button>
-  <button onclick="openBox()">🎁 Відкрити скриньку</button>
+  <h1>🌳 TreeCoin (TRS) 🌳</h1>
+  <div class="balance">Баланс: <span id="balance">0</span> TRS</div>
 
-  <div class="garden" id="garden"></div>
+  <div class="grid" id="grid"></div>
 
-<script>
-let balance = 100;
-let trees = [];
-let lastCollected = Date.now();
+  <button onclick="collectTRS()">💰 Зібрати TRS</button>
+  <button id="boxBtn" onclick="openBox()">🎁 Отримати щоденну скриньку</button>
 
-function updateBalance() {
-  document.getElementById("balance").innerText = balance;
-}
+  <script>
+    // === Налаштування ===
+    const GRID_SIZE = 9;
+    const TREE_TYPES = [
+      { name: "звичайне", icon: "🌱", chance: 60, income: 1 },
+      { name: "рідкісне", icon: "🌲", chance: 25, income: 3 },
+      { name: "епічне", icon: "🌸", chance: 10, income: 7 },
+      { name: "легендарне", icon: "🌟", chance: 5, income: 15 }
+    ];
 
-function plantTree() {
-  if (balance >= 10) {
-    balance -= 10;
-    const slot = document.createElement("div");
-    slot.className = "slot";
-    slot.innerText = "🌳";
-    document.getElementById("garden").appendChild(slot);
-    trees.push({ planted: Date.now() });
-    updateBalance();
-  } else {
-    alert("Недостатньо TRC!");
-  }
-}
+    // Збережені дані
+    let balance = parseFloat(localStorage.getItem("balance")) || 0;
+    let trees = JSON.parse(localStorage.getItem("trees")) || Array(GRID_SIZE).fill(null);
+    let lastCollect = parseInt(localStorage.getItem("lastCollect")) || Date.now();
+    let lastBox = parseInt(localStorage.getItem("lastBox")) || 0;
 
-function collect() {
-  let now = Date.now();
-  let earned = 0;
-  trees.forEach(t => {
-    earned += Math.floor((now - lastCollected) / 5000); // 1 TRC кожні 5с з кожного дерева
-  });
-  lastCollected = now;
-  balance += earned;
-  updateBalance();
-  alert("Зібрано: +" + earned + " TRC!");
-}
+    const grid = document.getElementById("grid");
+    const balanceEl = document.getElementById("balance");
+    const boxBtn = document.getElementById("boxBtn");
 
-function openBox() {
-  let reward = Math.floor(Math.random() * 20) + 5;
-  balance += reward;
-  updateBalance();
-  alert("Скринька принесла +" + reward + " TRC!");
-}
+    // Рендер сітки
+    function renderGrid() {
+      grid.innerHTML = "";
+      trees.forEach(tree => {
+        const slot = document.createElement("div");
+        slot.classList.add("slot");
+        if (tree) {
+          slot.innerHTML = TREE_TYPES[tree.type].icon;
+        } else {
+          slot.innerHTML = "➕";
+        }
+        grid.appendChild(slot);
+      });
+      balanceEl.textContent = balance.toFixed(2);
+      checkBoxButton();
+    }
 
-updateBalance();
-</script>
+    // Випадкове дерево
+    function getRandomTree() {
+      let roll = Math.random() * 100;
+      let sum = 0;
+      for (let i = 0; i < TREE_TYPES.length; i++) {
+        sum += TREE_TYPES[i].chance;
+        if (roll <= sum) return i;
+      }
+      return 0;
+    }
+
+    // Відкрити щоденну скриньку
+    function openBox() {
+      let now = Date.now();
+      if (now - lastBox < 24 * 60 * 60 * 1000) {
+        alert("Скринька доступна лише раз на добу!");
+        return;
+      }
+      let emptyIndex = trees.findIndex(t => t === null);
+      if (emptyIndex === -1) {
+        alert("Немає вільних слотів для дерева!");
+        return;
+      }
+      let type = getRandomTree();
+      trees[emptyIndex] = { type: type, planted: now };
+      lastBox = now;
+      saveGame();
+      renderGrid();
+      alert("Ви отримали " + TREE_TYPES[type].name + " дерево " + TREE_TYPES[type].icon);
+    }
+
+    // Збір TRS
+    function collectTRS() {
+      const now = Date.now();
+      const hoursPassed = (now - lastCollect) / (1000 * 60 * 60);
+      if (hoursPassed >= 1) {
+        let trsEarned = 0;
+        trees.forEach(tree => {
+          if (tree) trsEarned += TREE_TYPES[tree.type].income * Math.floor(hoursPassed);
+        });
+        balance += trsEarned;
+        lastCollect = now;
+        saveGame();
+        renderGrid();
+        alert("Зібрано +" + trsEarned + " TRS!");
+      } else {
+        alert("Занадто рано, спробуйте пізніше!");
+      }
+    }
+
+    // Кнопка скриньки
+    function checkBoxButton() {
+      let now = Date.now();
+      if (now - lastBox >= 24 * 60 * 60 * 1000) {
+        boxBtn.disabled = false;
+      } else {
+        boxBtn.disabled = true;
+      }
+    }
+
+    // Збереження
+    function saveGame() {
+      localStorage.setItem("balance", balance);
+      localStorage.setItem("trees", JSON.stringify(trees));
+      localStorage.setItem("lastCollect", lastCollect);
+      localStorage.setItem("lastBox", lastBox);
+    }
+
+    renderGrid();
+  </script>
 </body>
 </html>
+
