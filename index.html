@@ -30,13 +30,18 @@
       justify-content: center;
       align-items: center;
       font-size: 30px;
+      text-align: center;
+      padding: 5px;
     }
-    .tree-name {
+    .tree-label {
       font-size: 12px;
       margin-top: 5px;
-      text-align: center;
-      color: #1b5e20;
     }
+    .common { border-color: green; }
+    .rare { border-color: blue; }
+    .epic { border-color: purple; }
+    .legendary { border-color: gold; }
+
     button {
       padding: 10px 20px;
       font-size: 16px;
@@ -68,10 +73,10 @@
     // === Налаштування ===
     const GRID_SIZE = 9;
     const TREE_TYPES = [
-      { name: "Звичайне", icon: "🌱", chance: 60, income: 1 },
-      { name: "Рідкісне", icon: "🌲", chance: 25, income: 3 },
-      { name: "Епічне", icon: "🌸", chance: 10, income: 7 },
-      { name: "Легендарне", icon: "🌟", chance: 5, income: 15 }
+      { name: "Звичайне дерево", icon: "🌱", chance: 60, income: 1, class: "common" },
+      { name: "Рідкісне дерево", icon: "🌲", chance: 25, income: 3, class: "rare" },
+      { name: "Епічне дерево", icon: "🌸", chance: 10, income: 7, class: "epic" },
+      { name: "Легендарне дерево", icon: "🌟", chance: 5, income: 15, class: "legendary" }
     ];
 
     const COLLECT_COOLDOWN = 60 * 60 * 1000; // 1 година
@@ -96,11 +101,14 @@
       trees.forEach(tree => {
         const slot = document.createElement("div");
         slot.classList.add("slot");
+
         if (tree) {
-          slot.innerHTML = TREE_TYPES[tree.type].icon;
+          const treeType = TREE_TYPES[tree.type];
+          slot.classList.add(treeType.class);
+          slot.innerHTML = treeType.icon;
           const label = document.createElement("div");
-          label.classList.add("tree-name");
-          label.textContent = TREE_TYPES[tree.type].name;
+          label.classList.add("tree-label");
+          label.textContent = `${treeType.name} (+${treeType.income}/год)`;
           slot.appendChild(label);
         } else {
           slot.innerHTML = "➕";
@@ -138,7 +146,7 @@
       lastBox = now;
       saveGame();
       renderGrid();
-      alert("Ви отримали " + TREE_TYPES[type].name + " дерево " + TREE_TYPES[type].icon);
+      alert("Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
     }
 
     // Збір TRS
@@ -206,4 +214,3 @@
   </script>
 </body>
 </html>
-
