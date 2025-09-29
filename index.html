@@ -12,21 +12,28 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       padding: 20px;
     }
-    h1 { color: #2c7a3f; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); margin-bottom: 10px; }
+    h1 { 
+      color: #2c7a3f; 
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3); 
+      margin-bottom: 10px; 
+    }
     .topbar {
-      background: rgba(255,255,255,0.8);
+      background: rgba(255,255,255,0.9);
       border-radius: 15px;
       padding: 10px 20px;
       display: flex;
       align-items: center;
       gap: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      font-size: 22px;
+      margin-bottom: 15px;
     }
-    .coin-icon { font-size: 22px; }
-    .balance { font-size: 22px; font-weight: bold; color: #1a4d2e; }
+    .coin-icon { font-size: 25px; }
+    .balance { font-weight: bold; color: #1a4d2e; }
+    .premium-tag { font-size: 16px; color: gold; font-weight: bold; }
+    
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 140px);
@@ -49,11 +56,13 @@
     }
     .slot:hover { transform: scale(1.05); }
     .tree-label { font-size: 13px; margin-top: 8px; text-align: center; font-weight: bold; }
+
     /* Рідкості */
     .common { border-color: #4caf50; box-shadow: 0 0 10px rgba(0,255,0,0.3); }
     .rare { border-color: #2196f3; box-shadow: 0 0 15px rgba(33,150,243,0.5); }
     .epic { border-color: #9c27b0; box-shadow: 0 0 20px rgba(156,39,176,0.6); }
     .legendary { border-color: gold; box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+
     /* Кнопки */
     button {
       padding: 12px 25px;
@@ -70,21 +79,60 @@
     }
     button:hover { transform: scale(1.05); background: linear-gradient(to bottom, #66bb6a, #2e7d32); }
     .hidden { display: none; }
+
+    /* Інвентар */
     .inventory {
-      background: rgba(255,255,255,0.9);
-      padding: 10px;
-      border-radius: 10px;
-      max-width: 400px;
-      margin-top: 10px;
+      background: rgba(255,255,255,0.95);
+      padding: 15px;
+      border-radius: 15px;
+      max-width: 500px;
+      margin-top: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .inventory h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      color: #2c7a3f;
+    }
+    .inv-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .inv-item {
-      display: inline-block;
-      padding: 5px 10px;
-      margin: 5px;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
+      flex: 0 0 calc(50% - 10px);
       background: #f1f8e9;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: 0.2s;
+    }
+    .inv-item:hover { transform: scale(1.05); }
+
+    /* Ринок */
+    .market {
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 15px;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .market h2 { margin-top: 0; }
+    .market .box {
+      background: #e8f5e9;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px 0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .market .timer {
+      font-size: 14px;
+      color: #333;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -93,25 +141,36 @@
   <div class="topbar">
     <span class="coin-icon">🪙</span>
     <span class="balance" id="balance">0.000</span> TRS
+    <span id="premiumTag" class="premium-tag hidden">x2 ⭐</span>
   </div>
 
   <!-- Основний екран -->
   <div id="mainScreen">
     <div class="grid" id="grid"></div>
     <button onclick="openMarket()">🏪 Ринок</button>
-    <div class="inventory" id="inventory"><b>Інвентар:</b> (посади дерево)</div>
+    <div class="inventory" id="inventory">
+      <h2>📦 Інвентар</h2>
+      <div class="inv-list" id="invList"></div>
+    </div>
   </div>
 
   <!-- Ринок -->
   <div id="marketScreen" class="hidden">
-    <h2>🏪 Ринок</h2>
-    <button onclick="openDailyBox()">🎁 Щоденна скринька</button>
-    <div id="dailyTimer">00:00:00</div>
-    <button onclick="openAdBox()">📺 Скринька за рекламу</button>
-    <div id="adTimer">00:00:00</div>
-    <hr>
-    <button id="premiumBtn" onclick="buyPremium()">⭐ Купити преміум ($2)</button>
-    <br><button onclick="closeMarket()">🏡 Назад</button>
+    <div class="market">
+      <h2>🏪 Ринок</h2>
+      <div class="box">
+        <button onclick="openDailyBox()">🎁 Щоденна скринька</button>
+        <div id="dailyTimer" class="timer">00:00:00</div>
+      </div>
+      <div class="box">
+        <button onclick="openAdBox()">📺 Скринька за рекламу</button>
+        <div id="adTimer" class="timer">00:00:00</div>
+      </div>
+      <div class="box">
+        <button id="premiumBtn" onclick="buyPremium()">⭐ Купити преміум ($2)</button>
+      </div>
+      <button onclick="closeMarket()">🏡 Назад</button>
+    </div>
   </div>
 
   <script>
@@ -135,7 +194,8 @@
 
     const grid = document.getElementById("grid");
     const balanceEl = document.getElementById("balance");
-    const invEl = document.getElementById("inventory");
+    const premiumTag = document.getElementById("premiumTag");
+    const invList = document.getElementById("invList");
     const dailyTimer = document.getElementById("dailyTimer");
     const adTimer = document.getElementById("adTimer");
     const premiumBtn = document.getElementById("premiumBtn");
@@ -156,12 +216,13 @@
         grid.appendChild(slot);
       });
       balanceEl.textContent = balance.toFixed(3);
+      premiumTag.classList.toggle("hidden", !premium);
     }
 
     function renderInventory() {
-      invEl.innerHTML = "<b>Інвентар:</b> ";
+      invList.innerHTML = "";
       if (inventory.length === 0) {
-        invEl.innerHTML += "порожньо";
+        invList.innerHTML = "<i>порожньо</i>";
       } else {
         inventory.forEach((t, idx) => {
           const treeType = TREE_TYPES[t.type];
@@ -169,7 +230,7 @@
           div.classList.add("inv-item");
           div.textContent = treeType.icon + " " + treeType.name;
           div.onclick = () => selectTree(idx);
-          invEl.appendChild(div);
+          invList.appendChild(div);
         });
       }
     }
