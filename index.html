@@ -5,61 +5,132 @@
   <title>TreeCoin Game</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #eaf5e9;
+      font-family: 'Trebuchet MS', sans-serif;
+      margin: 0;
+      background: linear-gradient(to top, #6ddf6d 0%, #b3e5fc 100%);
+      height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
       padding: 20px;
     }
-    h1 { color: #2c7a3f; }
-    .balance { margin: 15px; font-size: 20px; }
+
+    h1 {
+      color: #2c7a3f;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+
+    .topbar {
+      background: rgba(255,255,255,0.8);
+      border-radius: 15px;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .coin-icon {
+      font-size: 22px;
+    }
+
+    .balance {
+      font-size: 22px;
+      font-weight: bold;
+      color: #1a4d2e;
+    }
+
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, 120px);
-      grid-gap: 10px;
-      margin: 20px 0;
+      grid-template-columns: repeat(3, 140px);
+      grid-gap: 15px;
+      margin: 30px 0;
     }
+
     .slot {
-      width: 120px; height: 120px;
-      background: #c9e6c9;
-      border: 2px solid #2c7a3f;
-      border-radius: 10px;
+      width: 140px;
+      height: 140px;
+      background: #dcedc8;
+      border-radius: 50%;
+      border: 3px solid #4caf50;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-size: 30px;
-      text-align: center;
-      padding: 5px;
+      font-size: 40px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
     }
-    .tree-label {
-      font-size: 12px;
-      margin-top: 5px;
+    .slot:hover {
+      transform: scale(1.05);
     }
-    .common { border-color: green; }
-    .rare { border-color: blue; }
-    .epic { border-color: purple; }
-    .legendary { border-color: gold; }
 
+    .tree-label {
+      font-size: 13px;
+      margin-top: 8px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    /* Рідкості */
+    .common { border-color: #4caf50; box-shadow: 0 0 10px rgba(0,255,0,0.3); }
+    .rare { border-color: #2196f3; box-shadow: 0 0 15px rgba(33,150,243,0.5); }
+    .epic { border-color: #9c27b0; box-shadow: 0 0 20px rgba(156,39,176,0.6); }
+    .legendary { border-color: gold; box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+
+    /* Кнопки */
     button {
-      padding: 10px 20px;
+      padding: 12px 25px;
       font-size: 16px;
-      background: #2c7a3f; color: white;
-      border: none; border-radius: 5px;
-      cursor: pointer; margin: 5px;
+      font-weight: bold;
+      background: linear-gradient(to bottom, #4caf50, #388e3c);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      transition: 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(to bottom, #66bb6a, #2e7d32);
     }
     button:disabled {
-      background: gray; cursor: not-allowed;
+      background: gray;
+      cursor: not-allowed;
+      box-shadow: none;
     }
+
     .timers {
-      margin: 10px; font-size: 14px; color: #333;
+      font-size: 15px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    /* Скринька */
+    #boxBtn {
+      position: relative;
+    }
+    #boxBtn.glow {
+      animation: glow 1.5s infinite alternate;
+    }
+    @keyframes glow {
+      from { box-shadow: 0 0 10px gold; }
+      to { box-shadow: 0 0 25px orange; }
     }
   </style>
 </head>
 <body>
-  <h1>🌳 TreeCoin (TRS) 🌳</h1>
-  <div class="balance">Баланс: <span id="balance">0.000</span> TRS</div>
+  <h1>🌳 TreeCoin (TRS)</h1>
+  
+  <div class="topbar">
+    <span class="coin-icon">🪙</span>
+    <span class="balance" id="balance">0.000</span> TRS
+  </div>
 
   <div class="grid" id="grid"></div>
 
@@ -67,7 +138,6 @@
   <div class="timers">Наступна скринька: <span id="boxTimer">00:00:00</span></div>
 
   <script>
-    // === Налаштування ===
     const GRID_SIZE = 9;
     const TREE_TYPES = [
       { name: "Звичайне дерево", icon: "🌱", chance: 60, income: 1, class: "common" },
@@ -78,7 +148,6 @@
 
     const BOX_COOLDOWN = 24 * 60 * 60 * 1000; // 24 години
 
-    // Дані збереження
     let balance = parseFloat(localStorage.getItem("balance")) || 0;
     let trees = JSON.parse(localStorage.getItem("trees")) || Array(GRID_SIZE).fill(null);
     let lastUpdate = parseInt(localStorage.getItem("lastUpdate")) || Date.now();
@@ -89,7 +158,6 @@
     const boxBtn = document.getElementById("boxBtn");
     const boxTimer = document.getElementById("boxTimer");
 
-    // Рендер сітки
     function renderGrid() {
       grid.innerHTML = "";
       trees.forEach(tree => {
@@ -112,7 +180,6 @@
       balanceEl.textContent = balance.toFixed(3);
     }
 
-    // Випадкове дерево
     function getRandomTree() {
       let roll = Math.random() * 100;
       let sum = 0;
@@ -123,7 +190,6 @@
       return 0;
     }
 
-    // Відкрити скриньку
     function openBox() {
       let now = Date.now();
       if (now - lastBox < BOX_COOLDOWN) {
@@ -143,10 +209,9 @@
       alert("Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
     }
 
-    // Реальний час — нарахування TRS
     function updateBalance() {
       let now = Date.now();
-      let elapsed = (now - lastUpdate) / 1000; // секунди з останнього оновлення
+      let elapsed = (now - lastUpdate) / 1000;
       lastUpdate = now;
 
       let incomePerSec = 0;
@@ -162,15 +227,16 @@
       renderGrid();
     }
 
-    // Таймер скриньки
     function updateBoxTimer() {
       let now = Date.now();
       let boxLeft = BOX_COOLDOWN - (now - lastBox);
       if (boxLeft <= 0) {
         boxBtn.disabled = false;
+        boxBtn.classList.add("glow");
         boxTimer.textContent = "Доступна!";
       } else {
         boxBtn.disabled = true;
+        boxBtn.classList.remove("glow");
         boxTimer.textContent = formatTime(boxLeft);
       }
     }
@@ -190,9 +256,8 @@
       localStorage.setItem("lastBox", lastBox);
     }
 
-    // Оновлення гри
     renderGrid();
-    setInterval(updateBalance, 1000); // щосекунди додаємо TRS
+    setInterval(updateBalance, 1000);
     setInterval(updateBoxTimer, 1000);
   </script>
 </body>
