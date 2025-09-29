@@ -1,0 +1,50 @@
+// Новий елемент ринку: скриня
+const CHEST_PRICE = 50; // ціна скрині TRS
+
+function buyChest() {
+  if (balance < CHEST_PRICE) {
+    alert("Недостатньо TRS для покупки скрині!");
+    return;
+  }
+  balance -= CHEST_PRICE;
+  saveGame();
+  renderGrid();
+  
+  // Випадкове дерево зі скрині
+  const type = getRandomTree();
+  inventory.push({ type });
+  renderInventory();
+
+  // Анімація випадання дерева
+  const chestAnim = document.createElement("div");
+  chestAnim.style.position = "absolute";
+  chestAnim.style.top = "50%";
+  chestAnim.style.left = "50%";
+  chestAnim.style.transform = "translate(-50%, -50%)";
+  chestAnim.style.fontSize = "50px";
+  chestAnim.style.opacity = 0;
+  chestAnim.style.transition = "all 1s ease-out";
+  chestAnim.textContent = TREE_TYPES[type].icon;
+  document.body.appendChild(chestAnim);
+
+  // Плавне з’явлення та падіння
+  setTimeout(() => {
+    chestAnim.style.opacity = 1;
+    chestAnim.style.transform = "translate(-50%, 0%)";
+  }, 100);
+
+  // Зникнення після 2 сек
+  setTimeout(() => {
+    chestAnim.style.opacity = 0;
+    setTimeout(() => chestAnim.remove(), 1000);
+  }, 2000);
+
+  alert("🎁 Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
+}
+
+// Додаємо кнопку купівлі скрині в ринок
+const marketDiv = document.querySelector(".market");
+const chestBox = document.createElement("div");
+chestBox.classList.add("box");
+chestBox.innerHTML = `<button onclick="buyChest()">🎁 Купити скриню (${CHEST_PRICE} TRS)</button>`;
+marketDiv.insertBefore(chestBox, marketDiv.querySelector("button[onclick='closeMarket()']"));
