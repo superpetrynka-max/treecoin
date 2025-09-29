@@ -1,358 +1,50 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <title>TreeCoin Game</title>
-  <style>
-    body {
-      font-family: 'Trebuchet MS', sans-serif;
-      margin: 0;
-      background: linear-gradient(to top, #6ddf6d 0%, #b3e5fc 100%);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-    }
-    h1 { 
-      color: #2c7a3f; 
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3); 
-      margin-bottom: 10px; 
-    }
-    .topbar {
-      background: rgba(255,255,255,0.9);
-      border-radius: 15px;
-      padding: 10px 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      font-size: 22px;
-      margin-bottom: 15px;
-    }
-    .coin-icon { font-size: 25px; }
-    .balance { font-weight: bold; color: #1a4d2e; }
-    .premium-tag { font-size: 16px; color: gold; font-weight: bold; }
-    
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 140px);
-      grid-gap: 15px;
-      margin: 20px 0;
-    }
-    .slot {
-      width: 140px;
-      height: 140px;
-      background: #dcedc8;
-      border-radius: 50%;
-      border: 3px solid #4caf50;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      font-size: 40px;
-      box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
-      cursor: pointer;
-    }
-    .slot:hover { transform: scale(1.05); }
-    .tree-label { font-size: 13px; margin-top: 8px; text-align: center; font-weight: bold; }
+// Новий елемент ринку: скриня
+const CHEST_PRICE = 50; // ціна скрині TRS
 
-    /* Рідкості */
-    .common { border-color: #4caf50; box-shadow: 0 0 10px rgba(0,255,0,0.3); }
-    .rare { border-color: #2196f3; box-shadow: 0 0 15px rgba(33,150,243,0.5); }
-    .epic { border-color: #9c27b0; box-shadow: 0 0 20px rgba(156,39,176,0.6); }
-    .legendary { border-color: gold; box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+function buyChest() {
+  if (balance < CHEST_PRICE) {
+    alert("Недостатньо TRS для покупки скрині!");
+    return;
+  }
+  balance -= CHEST_PRICE;
+  saveGame();
+  renderGrid();
+  
+  // Випадкове дерево зі скрині
+  const type = getRandomTree();
+  inventory.push({ type });
+  renderInventory();
 
-    /* Кнопки */
-    button {
-      padding: 12px 25px;
-      font-size: 16px;
-      font-weight: bold;
-      background: linear-gradient(to bottom, #4caf50, #388e3c);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-      transition: 0.2s;
-    }
-    button:hover { transform: scale(1.05); background: linear-gradient(to bottom, #66bb6a, #2e7d32); }
-    .hidden { display: none; }
+  // Анімація випадання дерева
+  const chestAnim = document.createElement("div");
+  chestAnim.style.position = "absolute";
+  chestAnim.style.top = "50%";
+  chestAnim.style.left = "50%";
+  chestAnim.style.transform = "translate(-50%, -50%)";
+  chestAnim.style.fontSize = "50px";
+  chestAnim.style.opacity = 0;
+  chestAnim.style.transition = "all 1s ease-out";
+  chestAnim.textContent = TREE_TYPES[type].icon;
+  document.body.appendChild(chestAnim);
 
-    /* Інвентар */
-    .inventory {
-      background: rgba(255,255,255,0.95);
-      padding: 15px;
-      border-radius: 15px;
-      max-width: 500px;
-      margin-top: 15px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    }
-    .inventory h2 {
-      margin: 0 0 10px;
-      font-size: 20px;
-      color: #2c7a3f;
-    }
-    .inv-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .inv-item {
-      flex: 0 0 calc(50% - 10px);
-      background: #f1f8e9;
-      border-radius: 10px;
-      padding: 10px;
-      text-align: center;
-      cursor: pointer;
-      font-weight: bold;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      transition: 0.2s;
-    }
-    .inv-item:hover { transform: scale(1.05); }
+  // Плавне з’явлення та падіння
+  setTimeout(() => {
+    chestAnim.style.opacity = 1;
+    chestAnim.style.transform = "translate(-50%, 0%)";
+  }, 100);
 
-    /* Ринок */
-    .market {
-      background: rgba(255,255,255,0.95);
-      padding: 20px;
-      border-radius: 15px;
-      max-width: 400px;
-      text-align: center;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    }
-    .market h2 { margin-top: 0; }
-    .market .box {
-      background: #e8f5e9;
-      border-radius: 10px;
-      padding: 15px;
-      margin: 10px 0;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    .market .timer {
-      font-size: 14px;
-      color: #333;
-      margin-top: 5px;
-    }
-  </style>
-</head>
-<body>
-  <h1>🌳 TreeCoin (TRS)</h1>
-  <div class="topbar">
-    <span class="coin-icon">🪙</span>
-    <span class="balance" id="balance">0.000</span> TRS
-    <span id="premiumTag" class="premium-tag hidden">x2 ⭐</span>
-  </div>
+  // Зникнення після 2 сек
+  setTimeout(() => {
+    chestAnim.style.opacity = 0;
+    setTimeout(() => chestAnim.remove(), 1000);
+  }, 2000);
 
-  <!-- Основний екран -->
-  <div id="mainScreen">
-    <div class="grid" id="grid"></div>
-    <button onclick="openMarket()">🏪 Ринок</button>
-    <div class="inventory" id="inventory">
-      <h2>📦 Інвентар</h2>
-      <div class="inv-list" id="invList"></div>
-    </div>
-  </div>
+  alert("🎁 Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
+}
 
-  <!-- Ринок -->
-  <div id="marketScreen" class="hidden">
-    <div class="market">
-      <h2>🏪 Ринок</h2>
-      <div class="box">
-        <button onclick="openDailyBox()">🎁 Щоденна скринька</button>
-        <div id="dailyTimer" class="timer">00:00:00</div>
-      </div>
-      <div class="box">
-        <button onclick="openAdBox()">📺 Скринька за рекламу</button>
-        <div id="adTimer" class="timer">00:00:00</div>
-      </div>
-      <div class="box">
-        <button id="premiumBtn" onclick="buyPremium()">⭐ Купити преміум ($2)</button>
-      </div>
-      <button onclick="closeMarket()">🏡 Назад</button>
-    </div>
-  </div>
-
-  <script>
-    const GRID_SIZE = 9;
-    const TREE_TYPES = [
-      { name: "Звичайне дерево", icon: "🌱", chance: 60, income: 1, class: "common" },
-      { name: "Рідкісне дерево", icon: "🌲", chance: 25, income: 3, class: "rare" },
-      { name: "Епічне дерево", icon: "🌸", chance: 10, income: 7, class: "epic" },
-      { name: "Легендарне дерево", icon: "🌟", chance: 5, income: 15, class: "legendary" }
-    ];
-    const DAILY_COOLDOWN = 24 * 60 * 60 * 1000;
-    const AD_COOLDOWN = 24 * 60 * 60 * 1000;
-
-    let balance = parseFloat(localStorage.getItem("balance")) || 0;
-    let trees = JSON.parse(localStorage.getItem("trees")) || Array(GRID_SIZE).fill(null);
-    let inventory = JSON.parse(localStorage.getItem("inventory")) || [];
-    let lastUpdate = parseInt(localStorage.getItem("lastUpdate")) || Date.now();
-    let lastDaily = parseInt(localStorage.getItem("lastDaily")) || 0;
-    let lastAd = parseInt(localStorage.getItem("lastAd")) || 0;
-    let premium = JSON.parse(localStorage.getItem("premium")) || false;
-
-    const grid = document.getElementById("grid");
-    const balanceEl = document.getElementById("balance");
-    const premiumTag = document.getElementById("premiumTag");
-    const invList = document.getElementById("invList");
-    const dailyTimer = document.getElementById("dailyTimer");
-    const adTimer = document.getElementById("adTimer");
-    const premiumBtn = document.getElementById("premiumBtn");
-
-    function renderGrid() {
-      grid.innerHTML = "";
-      trees.forEach((tree, i) => {
-        const slot = document.createElement("div");
-        slot.classList.add("slot");
-        if (tree) {
-          const t = TREE_TYPES[tree.type];
-          slot.classList.add(t.class);
-          slot.innerHTML = t.icon + `<div class='tree-label'>${t.name}<br>(+${t.income}/год)</div>`;
-        } else {
-          slot.innerHTML = "➕";
-          slot.onclick = () => plantFromInventory(i);
-        }
-        grid.appendChild(slot);
-      });
-      balanceEl.textContent = balance.toFixed(3);
-      premiumTag.classList.toggle("hidden", !premium);
-    }
-
-    function renderInventory() {
-      invList.innerHTML = "";
-      if (inventory.length === 0) {
-        invList.innerHTML = "<i>порожньо</i>";
-      } else {
-        inventory.forEach((t, idx) => {
-          const treeType = TREE_TYPES[t.type];
-          const div = document.createElement("div");
-          div.classList.add("inv-item");
-          div.textContent = treeType.icon + " " + treeType.name;
-          div.onclick = () => selectTree(idx);
-          invList.appendChild(div);
-        });
-      }
-    }
-
-    let selectedTree = null;
-    function selectTree(idx) {
-      selectedTree = idx;
-      alert("Вибрано " + TREE_TYPES[inventory[idx].type].name + ". Натисни на слот, щоб посадити!");
-    }
-
-    function plantFromInventory(i) {
-      if (selectedTree === null) { alert("Спочатку вибери дерево в інвентарі!"); return; }
-      trees[i] = inventory[selectedTree];
-      inventory.splice(selectedTree, 1);
-      selectedTree = null;
-      saveGame();
-      renderGrid();
-      renderInventory();
-    }
-
-    function getRandomTree() {
-      let roll = Math.random() * 100;
-      let sum = 0;
-      for (let i = 0; i < TREE_TYPES.length; i++) {
-        sum += TREE_TYPES[i].chance;
-        if (roll <= sum) return i;
-      }
-      return 0;
-    }
-
-    function openDailyBox() {
-      let now = Date.now();
-      if (now - lastDaily < DAILY_COOLDOWN) { alert("Щоденна скринька ще недоступна!"); return; }
-      let type = getRandomTree();
-      inventory.push({ type });
-      lastDaily = now;
-      saveGame();
-      renderInventory();
-      alert("Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
-    }
-
-    function openAdBox() {
-      let now = Date.now();
-      if (now - lastAd < AD_COOLDOWN) { alert("Скринька за рекламу ще недоступна!"); return; }
-      let type = getRandomTree();
-      inventory.push({ type });
-      lastAd = now;
-      saveGame();
-      renderInventory();
-      alert("Ви отримали " + TREE_TYPES[type].name + " " + TREE_TYPES[type].icon);
-    }
-
-    function updateBalance() {
-      let now = Date.now();
-      let elapsed = (now - lastUpdate) / 1000;
-      lastUpdate = now;
-      let incomePerSec = 0;
-      trees.forEach(tree => {
-        if (tree) incomePerSec += TREE_TYPES[tree.type].income / 3600;
-      });
-      if (premium) incomePerSec *= 2;
-      balance += incomePerSec * elapsed;
-      saveGame();
-      renderGrid();
-    }
-
-    function updateTimers() {
-      let now = Date.now();
-      updateTimer(now, lastDaily, DAILY_COOLDOWN, dailyTimer);
-      updateTimer(now, lastAd, AD_COOLDOWN, adTimer);
-    }
-    function updateTimer(now, last, cd, el) {
-      let left = cd - (now - last);
-      if (left <= 0) el.textContent = "Доступно!";
-      else {
-        let h = String(Math.floor(left/3600000)).padStart(2,"0");
-        let m = String(Math.floor((left%3600000)/60000)).padStart(2,"0");
-        let s = String(Math.floor((left%60000)/1000)).padStart(2,"0");
-        el.textContent = `${h}:${m}:${s}`;
-      }
-    }
-
-    function buyPremium() {
-      if (premium) { alert("У вас вже активний преміум!"); return; }
-      premium = true;
-      saveGame();
-      renderPremiumBtn();
-      alert("⭐ Ви активували преміум! Всі доходи x2.");
-    }
-
-    function renderPremiumBtn() {
-      if (premium) {
-        premiumBtn.textContent = "⭐ Преміум активовано ✅";
-        premiumBtn.disabled = true;
-      }
-    }
-
-    function saveGame() {
-      localStorage.setItem("balance", balance);
-      localStorage.setItem("trees", JSON.stringify(trees));
-      localStorage.setItem("inventory", JSON.stringify(inventory));
-      localStorage.setItem("lastUpdate", lastUpdate);
-      localStorage.setItem("lastDaily", lastDaily);
-      localStorage.setItem("lastAd", lastAd);
-      localStorage.setItem("premium", JSON.stringify(premium));
-    }
-
-    function openMarket() {
-      document.getElementById("mainScreen").classList.add("hidden");
-      document.getElementById("marketScreen").classList.remove("hidden");
-      renderPremiumBtn();
-    }
-    function closeMarket() {
-      document.getElementById("marketScreen").classList.add("hidden");
-      document.getElementById("mainScreen").classList.remove("hidden");
-    }
-
-    renderGrid();
-    renderInventory();
-    renderPremiumBtn();
-    setInterval(updateBalance, 1000);
-    setInterval(updateTimers, 1000);
-  </script>
-</body>
-</html>
+// Додаємо кнопку купівлі скрині в ринок
+const marketDiv = document.querySelector(".market");
+const chestBox = document.createElement("div");
+chestBox.classList.add("box");
+chestBox.innerHTML = `<button onclick="buyChest()">🎁 Купити скриню (${CHEST_PRICE} TRS)</button>`;
+marketDiv.insertBefore(chestBox, marketDiv.querySelector("button[onclick='closeMarket()']"));
